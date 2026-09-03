@@ -1,0 +1,88 @@
+name: Rust Checks
+
+on:
+  pull_request:
+  push:
+    # we explicitly want to include branches for CI changes
+    branches: [ "main", "ci/*" ]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup component add rustfmt
+
+      - name: Execute
+        run: cargo fmt --all -- --check
+  
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup component add clippy
+          rustup component add rust-src
+
+      - name: Execute
+        run: cargo clippy --all-targets --all-features -- -D warnings
+  
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup component add rust-src
+
+      - name: Execute
+        run: cargo check --all-targets --all-features
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Execute
+        run: cargo test --all-targets --all-features
+
+  dependency-policy:
+    name: Dependency Policy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        
+      - name: Execute
+        uses: EmbarkStudios/cargo-deny-action@v2
