@@ -1,0 +1,107 @@
+# This is the configuration file for imgtool.
+#
+# Each field has a brief description and the default value for reference.
+# Fields with only specific options permitted have those labelled too.
+
+# Configuration for the target machine.
+[boot]
+# Firmware mode of the machine.
+#
+# Allowed values: "uefi, bios"
+# Default value: "bios" - NOTE: this is bound to change to UEFI, presumably at 1.0
+firmware = "bios"
+
+# Configuration for the target disk.
+[disk]
+# Whether to use MBR or GPT.
+# This is ignored when booting from UEFI.
+#
+# Allowed values: "gpt", "mbr"
+# Default value: "gpt"
+type = "gpt"
+
+# The size, in bytes, of each sector on the disk.
+#
+# Default value: 512
+sector_size = 512
+
+# The number of sectors present on the disk.
+# This can be used along with the sector size to determine the logical capacity.
+# This is only really useful for image creation, but is helpful for consistency.
+#
+# Default value: 4194304 (2GiB, assuming SS=512)
+disk_size = 4194304
+
+# Configuration options for the ESP partition.
+# This is ignored when booting from BIOS.
+[esp]
+# The size, in sectors, of the ESP partition.
+#
+# Default: 262144 (128MiB, assuming SS=512)
+size = 262144
+
+# The directory to locate the built EFI from.
+#
+# Default value: "build/efi"
+source = "build/efi"
+
+# Configuration options for the BIOS boot partition.
+# This is ignored when booting from UEFI.
+[bios]
+# The size, in sectors, of the BIOS boot partition.
+#
+# Default: 8192 (4MiB, assuming SS=512)
+size = 8192
+
+# The contents of the BIOS boot partition.
+#
+# Each file is read and appended to the partition sequentially, and
+# must be raw. If the sum of the size of all listed files is greater
+# than the partition size, an exception is thrown.
+#
+# You may also optionally include a magic byte signature of any size (must
+# be byte aligned) to be verified against the first `N` bytes of the file.
+contents = [
+    { bin = "build/stage2.bin", magic = "0x557755" },
+    { bin = "build/stage3.bin", magic = "0x55AA" },
+]
+
+# Configuration options for the kernel 'root' partition.
+#
+# This is mapped into a filesystem of the specified type and written onto
+# the disk.
+#
+# NOTE: This is intended, for the time being, for a simple kernel, containing
+# only a few directories or files. As a result, it doesn't really scale well.
+# This is likely to change in a future major version!
+[kernel]
+# The kernel partition label.
+#
+# Default value: "mykernel"
+label = "mykernel"
+
+# The filesystem that the partition should be formatted with.
+# A value of "raw" means no filesystem.
+#
+# NOTE: in a future version, there will be significantly more options available.
+# Filesystem integration depends on a crate that doesn't yet exist...
+#
+# Allowed values: "raw", "fat32"
+# Default value: "fat32"
+filesystem = "fat32"
+
+# The contents of the kernel partition
+#
+# The destination field determines the location on the filesystem the file is written to.
+# The tail of the path must correspond to the source type; if the source is a directory,
+# the destination must too be a directory. Likewise for a file, though the file can be
+# named anything within the limits of the filesystem. If no filesystem is present, the
+# destination field is ignored and files are written sequentially.
+#
+# If the sum of the size of all listed files is greater than the partition size, an 
+# exception is thrown.
+contents = [
+    { src = "build/kernel.sys", dest = "/sys/kernel.sys" },
+    { src = "build/initrd", dest = "/initrd.img" },
+    { src = "build/drivers/", dest = "/drivers/" },
+]
