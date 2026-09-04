@@ -1,3 +1,6 @@
+> [!WARNING]  
+> This project is incomplete, may be missing critical features, and could have potentially major issues. **Use at your own risk!**
+
 # imgtool
 This is a CLI tool designed to help me with formatting a boot medium for testing my OS bootloader and kernel. It is designed for compatibility with other bootloader designs as well, so you are free to use it for your own means (that is, if you are able to).
 
