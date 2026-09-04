@@ -32,6 +32,14 @@ sector_size = 512
 # Default value: 4194304 (2GiB, assuming SS=512)
 disk_size = 4194304
 
+# Configuration for the stage 1 bootloader binary.
+[init]
+# The directory to locate the stage 1 bootloader binary from.
+# This should always be `512` bytes or smaller.
+#
+# Default value: "build/stage1.bin"
+source = "build/stage1.bin"
+
 # Configuration options for the ESP partition.
 # This is ignored when booting from BIOS.
 [esp]
@@ -42,8 +50,8 @@ size = 262144
 
 # The directory to locate the built EFI from.
 #
-# Default value: "build/efi"
-source = "build/efi"
+# Default value: "build/efi/"
+source = "build/efi/"
 
 # Configuration options for the BIOS boot partition.
 # This is ignored when booting from UEFI.
