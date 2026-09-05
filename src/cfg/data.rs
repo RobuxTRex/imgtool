@@ -12,7 +12,7 @@ pub struct Config<'a> {
     pub bios: Option<BiosConfig<'a>>,
     pub esp: Option<EspConfig<'a>>,
     pub kernel: KernelConfig<'a>,
-    pub disk: DiskConfig,
+    pub disk: DiskConfig<'a>,
     pub init: Option<InitConfig<'a>>,
     pub boot: BootConfig,
 }
@@ -43,7 +43,7 @@ pub struct BootConfig(pub FirmwareKind);
 
 /// Configuration for the target disk.
 #[derive(Debug)]
-pub struct DiskConfig {
+pub struct DiskConfig<'a> {
     /// The size of a logical sector on the disk, in bytes.
     pub sector_size: usize,
 
@@ -55,6 +55,9 @@ pub struct DiskConfig {
 
     /// Whether GPT or MBR is used on this disk.
     pub kind: DiskKind,
+
+    /// The path to the disk image.
+    pub location: &'a Path,
 }
 
 /// Configuration for the UEFI ESP partition.
@@ -115,7 +118,7 @@ impl<'de> Deserialize<'de> for Config<'de> {
             // parse anyway so we don't get a complaint
             let _: Option<BiosConfig> = root.optional("bios");
             let _: Option<InitConfig> = root.optional("init");
-            
+
             (None, None)
         };
 
@@ -125,7 +128,7 @@ impl<'de> Deserialize<'de> for Config<'de> {
         } else {
             // parse anyway so we don't get a complaint
             let _: Option<EspConfig> = root.optional("esp");
-            
+
             None
         };
 
@@ -179,7 +182,7 @@ impl<'de> Deserialize<'de> for BootConfig {
     }
 }
 
-impl<'de> Deserialize<'de> for DiskConfig {
+impl<'de> Deserialize<'de> for DiskConfig<'de> {
     fn deserialize(value: &mut Value<'de>) -> Result<Self, toml_span::DeserError> {
         // get the disk config table
         let mut table = TableHelper::new(value)?;
@@ -188,6 +191,7 @@ impl<'de> Deserialize<'de> for DiskConfig {
         let disk_size = table.required("disk_size")?;
         let sector_size = table.required("sector_size")?;
         let kind = table.required("type")?;
+        let location = get_path!(table, value, "location");
 
         table.finalize(None)?;
 
@@ -195,6 +199,7 @@ impl<'de> Deserialize<'de> for DiskConfig {
             sector_size,
             disk_size,
             kind,
+            location,
         })
     }
 }

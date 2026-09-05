@@ -32,6 +32,12 @@ sector_size = 512
 # Default value: 4194304 (2GiB, assuming SS=512)
 disk_size = 4194304
 
+# The location to write the disk image to.
+# If this path includes directory(s) that do not yet exist, they will be created. 
+#
+# Default value: os.img
+location = "os.img"
+
 # Configuration for the stage 1 bootloader binary.
 [init]
 # The directory to locate the stage 1 bootloader binary from.
