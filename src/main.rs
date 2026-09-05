@@ -4,6 +4,7 @@ use std::env;
 
 use crate::cli::CliFunction;
 
+mod cfg;
 mod cli;
 mod setup;
 
