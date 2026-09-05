@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use clap::Parser;
-
-use crate::cli::Cli;
+use crate::cli::CliFunction;
 
 mod cli;
 
 fn main() {
-    // parse CLI arguments
-    let args = Cli::parse();
+    // are we creating a config (setup) or executing the image tool?
+    let function = CliFunction::parse();
 
-    println!("{:#?}", args);
+    println!("{}", function);
 }
