@@ -7,6 +7,7 @@ use crate::cli::CliFunction;
 mod cfg;
 mod cli;
 mod default;
+mod image;
 mod setup;
 
 fn main() -> anyhow::Result<()> {

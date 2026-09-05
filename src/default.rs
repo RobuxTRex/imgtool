@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use anyhow::bail;
 use toml_span::Deserialize;
 
-use crate::cfg::Config;
+use crate::{cfg::Config, image::handle::ImageHandle};
 
 pub(crate) fn execute(dir: PathBuf, cfg: PathBuf) -> anyhow::Result<()> {
     // verify the config file exists
@@ -21,8 +21,16 @@ pub(crate) fn execute(dir: PathBuf, cfg: PathBuf) -> anyhow::Result<()> {
     let mut config_value = toml_span::parse(config_text)?;
     let config = Config::deserialize(&mut config_value)?;
 
-    // log the result for now
-    println!("{:#?}", config);
+    // retrieve the disk image, or write it if it doesn't already exist
+    let image_location = config.disk.location;
+    let image = if fs::exists(image_location)? {
+        ImageHandle::get(image_location)
+    } else {
+        ImageHandle::create(
+            image_location,
+            (config.disk.sector_size * config.disk.disk_size) as u64,
+        )
+    }?;
 
     Ok(())
 }
