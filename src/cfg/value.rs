@@ -1,6 +1,61 @@
-use std::{fmt::Display, path::Path};
+/// Retrieves a string value at `path` and converts it to a [Path].
+///
+/// This returns an error *if* the string is borrowed due to lifetime rules.
+///
+/// If `true` is evaluated as the 4th argument, the result is an `Option<T>`.
+macro_rules! get_path {
+    ($table:expr, $value:expr, $key:expr) => {{
+        let path: Cow<'de, str> = $table.required($key)?;
+        match path {
+            Cow::Borrowed(s) => Path::new(s),
+            Cow::Owned(_) => {
+                return Err(toml_span::Error::from((
+                    toml_span::ErrorKind::Custom(Cow::Owned(format!(
+                        "the string provided at {} contains escapes, cannot borrow",
+                        $key
+                    ))),
+                    $value.span,
+                ))
+                .into());
+            }
+        }
+    }};
+
+    ($table:expr, $value:expr, $key:expr, $required:expr) => {{
+        let path: Option<Cow<'de, str>> = if $required {
+            $table.optional($key)
+        } else {
+            Some($table.required($key)?)
+        };
+
+        match path {
+            Some(Cow::Borrowed(s)) => Some(Path::new(s)),
+            Some(Cow::Owned(_)) => {
+                return Err(toml_span::Error::from((
+                    toml_span::ErrorKind::Custom(Cow::Owned(format!(
+                        "the string provided at {} contains escapes, cannot borrow",
+                        $key
+                    ))),
+                    $value.span,
+                ))
+                .into());
+            }
+            _ => None,
+        }
+    }};
+}
+
+pub(crate) use get_path;
+
+use std::{borrow::Cow, fmt::Display, path::Path};
 
 use anyhow::bail;
+use smallvec::SmallVec;
+use toml_span::{
+    Deserialize, ErrorKind,
+    de_helpers::{TableHelper, expected},
+    value::ValueInner,
+};
 
 /// A binary file with an optional magic byte signature to be appended into
 /// the BIOS boot partition.
@@ -11,7 +66,7 @@ pub struct BiosBinary<'a> {
 
     /// An optional magic byte signature to ensure the validity of the
     /// read binary.
-    pub magic: Option<&'a str>,
+    pub magic: Option<Cow<'a, str>>,
 }
 
 /// Whether GPT or MBR is being used on the disk.
@@ -77,6 +132,34 @@ pub struct KernelEntry<'a> {
     pub destination: Option<&'a Path>,
 }
 
+/// A wrapper for the [SmallVec] type that allows for deserialization.
+#[derive(Debug)]
+pub struct SmallVecValue<T, const N: usize>(pub SmallVec<[T; N]>)
+where
+    [T; N]: smallvec::Array<Item = T>;
+
+impl<'de> Deserialize<'de> for BiosBinary<'de> {
+    fn deserialize(value: &mut toml_span::Value<'de>) -> Result<Self, toml_span::DeserError> {
+        let mut table = TableHelper::new(value)?;
+
+        let path = get_path!(table, value, "bin");
+        let magic = table.optional("magic");
+
+        table.finalize(None)?;
+
+        Ok(Self { path, magic })
+    }
+}
+
+impl<'de> Deserialize<'de> for DiskKind {
+    fn deserialize(value: &mut toml_span::Value<'de>) -> Result<Self, toml_span::DeserError> {
+        let str = value.take_string(Some("expected the disk kind field to be a string"))?;
+        Ok(DiskKind::try_from(str).map_err(|e| {
+            toml_span::Error::from((ErrorKind::Custom(e.to_string().into()), value.span))
+        })?)
+    }
+}
+
 impl Display for DiskKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -86,15 +169,24 @@ impl Display for DiskKind {
     }
 }
 
-impl TryFrom<&str> for DiskKind {
+impl TryFrom<Cow<'_, str>> for DiskKind {
     type Error = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
+    fn try_from(value: Cow<'_, str>) -> Result<Self, Self::Error> {
+        match value.as_ref() {
             "gpt" => Ok(Self::Gpt),
             "mbr" => Ok(Self::Mbr),
             _ => bail!("expected either 'gpt' or 'mbr' drive kind, got {value}"),
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for FilesystemKind {
+    fn deserialize(value: &mut toml_span::Value<'de>) -> Result<Self, toml_span::DeserError> {
+        let str = value.take_string(Some("expected the filesystem kind field to be a string"))?;
+        Ok(FilesystemKind::try_from(str).map_err(|e| {
+            toml_span::Error::from((ErrorKind::Custom(e.to_string().into()), value.span))
+        })?)
     }
 }
 
@@ -107,15 +199,27 @@ impl Display for FilesystemKind {
     }
 }
 
-impl TryFrom<&str> for FilesystemKind {
+impl TryFrom<Cow<'_, str>> for FilesystemKind {
     type Error = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
+    fn try_from(value: Cow<'_, str>) -> Result<Self, Self::Error> {
+        match value.as_ref() {
             "fat32" => Ok(Self::Fat32),
             "raw" => Ok(Self::Raw),
             _ => bail!("expected either 'fat32' or 'raw' filesystem kind, got {value}"),
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for FirmwareKind {
+    fn deserialize(value: &mut toml_span::Value<'de>) -> Result<Self, toml_span::DeserError> {
+        let str = value.take_string(Some("expected the firmware kind field to be a string"))?;
+        Ok(FirmwareKind::try_from(str).map_err(|e| {
+            toml_span::Error::from((
+                toml_span::ErrorKind::Custom(e.to_string().into()),
+                value.span,
+            ))
+        })?)
     }
 }
 
@@ -128,14 +232,54 @@ impl Display for FirmwareKind {
     }
 }
 
-impl TryFrom<&str> for FirmwareKind {
+impl TryFrom<Cow<'_, str>> for FirmwareKind {
     type Error = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
+    fn try_from(value: Cow<'_, str>) -> Result<Self, Self::Error> {
+        match value.as_ref() {
             "bios" => Ok(Self::Bios),
             "uefi" => Ok(Self::Uefi),
             _ => bail!("expected either 'bios' or 'uefi' firmware kind, got {value}"),
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for KernelEntry<'de> {
+    fn deserialize(value: &mut toml_span::Value<'de>) -> Result<Self, toml_span::DeserError> {
+        let mut table = TableHelper::new(value)?;
+
+        let src = get_path!(table, value, "src");
+        let dest = get_path!(table, value, "dest", true);
+
+        table.finalize(None)?;
+
+        Ok(Self {
+            source: src,
+            destination: dest,
+        })
+    }
+}
+
+impl<'de, T, const N: usize> Deserialize<'de> for SmallVecValue<T, N>
+where
+    [T; N]: smallvec::Array<Item = T>,
+    T: Deserialize<'de>,
+{
+    fn deserialize(value: &mut toml_span::Value<'de>) -> Result<Self, toml_span::DeserError> {
+        // parse into a vec
+        let values = match value.take() {
+            ValueInner::Array(arr) => arr,
+            other => return Err(expected("an array", other, value.span).into()),
+        };
+
+        // convert into a SmallVec
+        let mut items = SmallVec::with_capacity(values.len());
+
+        // push items to SmallVec
+        for mut item in values {
+            items.push(T::deserialize(&mut item)?);
+        }
+
+        Ok(Self(items))
     }
 }

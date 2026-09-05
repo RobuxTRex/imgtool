@@ -6,6 +6,7 @@ use crate::cli::CliFunction;
 
 mod cfg;
 mod cli;
+mod default;
 mod setup;
 
 fn main() -> anyhow::Result<()> {
@@ -22,7 +23,7 @@ fn main() -> anyhow::Result<()> {
 
     // are we creating a config (setup) or executing the image tool?
     match CliFunction::parse() {
-        CliFunction::Default => Ok(()),
+        CliFunction::Default => default::execute(current_directory, config_path),
         CliFunction::Setup => setup::execute(config_path),
     }
 }
