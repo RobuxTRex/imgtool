@@ -24,7 +24,7 @@ impl CliFunction {
         env::args()
             .nth(1)
             .map(|s| s.eq(SETUP_SUBCOMMAND))
-            .map_or_else(|| CliFunction::default(), |v| v.into())
+            .map_or_else(CliFunction::default, |v| v.into())
     }
 }
 
