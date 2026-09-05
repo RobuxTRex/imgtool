@@ -7,6 +7,7 @@ use crate::cfg::{BiosBinary, DiskKind, FilesystemKind, FirmwareKind, KernelEntry
 pub struct Config<'a> {
     pub bios: Option<BiosConfig<'a>>,
     pub esp: Option<EspConfig<'a>>,
+    pub kernel: KernelConfig<'a>,
     pub disk: DiskConfig<'a>,
     pub init: Option<InitConfig<'a>>,
     pub boot: BootConfig<'a>,
