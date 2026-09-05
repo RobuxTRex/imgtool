@@ -1,4 +1,4 @@
-use std::{fmt::Display, path::PathBuf};
+use std::{fmt::Display, path::Path};
 
 use anyhow::bail;
 
@@ -7,7 +7,7 @@ use anyhow::bail;
 #[derive(Debug)]
 pub struct BiosBinary<'a> {
     /// The path to the binary relative to the current working directory.
-    pub path: &'a PathBuf,
+    pub path: &'a Path,
 
     /// An optional magic byte signature to ensure the validity of the
     /// read binary.
@@ -70,11 +70,11 @@ pub enum FirmwareKind {
 pub struct KernelEntry<'a> {
     /// The path to the file or directory relative to the current
     /// working directory.
-    pub source: &'a PathBuf,
+    pub source: &'a Path,
 
     /// The path to the file or directory to write the source to
     /// in the kernel filesystem, if any.
-    pub destination: Option<&'a PathBuf>,
+    pub destination: Option<&'a Path>,
 }
 
 impl Display for DiskKind {

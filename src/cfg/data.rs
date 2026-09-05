@@ -1,16 +1,18 @@
-use std::path::PathBuf;
+use std::path::Path;
+
+use arrayvec::ArrayVec;
 
 use crate::cfg::{BiosBinary, DiskKind, FilesystemKind, FirmwareKind, KernelEntry};
 
 /// Configuration data structure for imgtool.
 #[derive(Debug)]
-pub struct Config<'a> {
-    pub bios: Option<BiosConfig<'a>>,
+pub struct Config<'a, const B: usize, const K: usize> {
+    pub bios: Option<BiosConfig<'a, B>>,
     pub esp: Option<EspConfig<'a>>,
-    pub kernel: KernelConfig<'a>,
+    pub kernel: KernelConfig<'a, K>,
     pub disk: DiskConfig<'a>,
     pub init: Option<InitConfig<'a>>,
-    pub boot: BootConfig<'a>,
+    pub boot: BootConfig,
 }
 
 /// Configuration for the BIOS boot partition.
@@ -18,7 +20,7 @@ pub struct Config<'a> {
 /// This field is ignored when the [FirmwareKind] is set to
 /// [UEFI](FirmwareKind::Uefi).
 #[derive(Debug)]
-pub struct BiosConfig<'a> {
+pub struct BiosConfig<'a, const N: usize> {
     /// The size of the partition in sectors.
     pub size: usize,
 
@@ -30,12 +32,12 @@ pub struct BiosConfig<'a> {
     ///
     /// Fields may also contain a magic byte signature that is used
     /// to validate the files.
-    pub contents: Vec<BiosBinary<'a>>,
+    pub contents: ArrayVec<BiosBinary<'a>, N>,
 }
 
 /// Configuration for the target machine.
 #[derive(Debug)]
-pub struct BootConfig<'a>(pub &'a FirmwareKind);
+pub struct BootConfig(pub FirmwareKind);
 
 /// Configuration for the target disk.
 #[derive(Debug)]
@@ -64,7 +66,7 @@ pub struct EspConfig<'a> {
 
     /// The directory to source the EFI files from, relative to the
     /// working directory.
-    pub source: &'a PathBuf,
+    pub source: &'a Path,
 }
 
 /// Configuration for the stage 1 bootloader entry.
@@ -72,11 +74,11 @@ pub struct EspConfig<'a> {
 /// This field is ignored when the [FirmwareKind] is set to
 /// [UEFI](FirmwareKind::Uefi).
 #[derive(Debug)]
-pub struct InitConfig<'a>(pub &'a PathBuf);
+pub struct InitConfig<'a>(pub &'a Path);
 
 /// Configuration for the kernel partition.
 #[derive(Debug)]
-pub struct KernelConfig<'a> {
+pub struct KernelConfig<'a, const N: usize> {
     /// The contents of the BIOS boot partition.
     ///
     /// Each field is read and appended to the partition sequentially;
@@ -85,7 +87,7 @@ pub struct KernelConfig<'a> {
     ///
     /// Fields may also contain a magic byte signature that is used
     /// to validate the files.
-    pub contents: Vec<KernelEntry<'a>>,
+    pub contents: ArrayVec<KernelEntry<'a>, N>,
 
     /// The label of the partition, if any filesystem is present.
     pub label: Option<&'a str>,
