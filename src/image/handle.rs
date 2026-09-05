@@ -5,13 +5,16 @@ use std::{
 };
 
 /// A handle containing [File] which acts as a disk image.
-pub struct ImageHandle(File);
+#[derive(Debug)]
+pub(crate) struct ImageHandle(pub File);
 
 impl ImageHandle {
     /// Creates an [ImageHandle] to a new image file located at `location`.
+    #[inline]
     pub fn create(location: &Path, capacity: u64) -> io::Result<ImageHandle> {
         let image = OpenOptions::new()
             .create(true)
+            .read(true)
             .write(true)
             .truncate(true)
             .open(location)?;
@@ -27,9 +30,22 @@ impl ImageHandle {
     }
 
     /// Provides an [ImageHandle] to an image file located at `location`.
-    pub fn get(location: &Path) -> io::Result<ImageHandle> {
-        let image = OpenOptions::new().write(true).open(location)?;
+    #[inline]
+    pub fn retrieve(location: &Path) -> io::Result<ImageHandle> {
+        let image = OpenOptions::new().read(true).write(true).open(location)?;
 
         Ok(Self(image))
+    }
+
+    /// Gets the [File] value within an [ImageHandle].
+    #[inline]
+    pub fn get(&self) -> &File {
+        &self.0
+    }
+
+    /// Gets the [File] value within an [ImageHandle] with a mutable reference.
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut File {
+        &mut self.0
     }
 }
