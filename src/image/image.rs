@@ -1,6 +1,6 @@
-use std::io::{Read, Result, Seek, SeekFrom};
+use std::io::{Read, Result, Seek, SeekFrom, Write};
 
-use crate::{cfg::Config, image::ImageHandle};
+use crate::{cfg::Config, image::ImageHandle, mbr::MbrSector};
 
 /// The amount of bytes that should be read/written each `fs` call.
 ///
@@ -32,6 +32,13 @@ pub(crate) struct ImageGeometry {
     /// The size, in bytes, of each sector in the image.
     pub sector_size: u64,
 }
+
+/// Handle for a data buffer to be written to the image.
+///
+/// This guarantees the length of the buffer is the sector
+/// size.
+#[derive(Debug)]
+pub(crate) struct ImageWriteData<'a>(&'a [u8]);
 
 impl Image {
     /// Creates a new [Image].
@@ -116,6 +123,39 @@ impl Image {
         self.handle.get().read_exact(buf) // read
     }
 
+    pub fn write_lba<'a, const S: usize>(
+        &mut self,
+        lba: u64,
+        data: [ImageWriteData<'a>; S],
+    ) -> Result<()> {
+        let sector_size = self.geometry.sector_size;
+        let location = lba * sector_size; // the byte location of the write
+        let size = (S as u64) * sector_size; // the total size of the write
+
+        assert!(
+            size <= RW_CHUNK_SIZE,
+            "expected the total write size to be less than the maximum chunk size, got {size} bytes"
+        );
+        assert!(
+            location < self.geometry.capacity,
+            "expected the location to be in range, got location {location} (overflows capacity)"
+        );
+        assert!(
+            location + size < self.geometry.capacity,
+            "expected the read amount to be in range, got location {} (overflows capacity)",
+            location + size
+        );
+
+        let file = self.handle.get_mut();
+        file.seek(SeekFrom::Start(location))?; // seek to the target location
+
+        // loop through the amount of sectors, writing them sequentially
+        for sector in 0..S {
+            file.write(data[sector].get())?;
+        }
+        Ok(())
+    }
+
     /// Returns the LBA for the provided byte location.
     /// [None] is returned if the location is out of range.
     #[inline]
@@ -126,5 +166,43 @@ impl Image {
         } else {
             Some(val)
         }
+    }
+
+    /// Returns a newly constructed [MbrSector] instance
+    /// for this [Image].
+    ///
+    /// Note that this requires a mutable reference to this [Image];
+    /// callers are suggested to drop the result of this method after
+    /// usage.
+    #[inline]
+    pub fn get_mbr<'a>(&'a mut self) -> MbrSector<'a> {
+        MbrSector::new(self)
+    }
+}
+
+impl<'a> ImageWriteData<'a> {
+    /// Wraps a byte buffer into an [ImageWriteData]
+    /// in order to perform a write operation on an [Image].
+    ///
+    /// # Panics
+    /// This function panics when the `ss` (sector size) does not
+    /// match the length of the `buf`.
+    #[inline]
+    pub fn new(ss: u64, buf: &'a &[u8]) -> Self {
+        assert_eq!(
+            ss,
+            buf.len() as u64,
+            "expected the write data buffer to be {ss} bytes, got {} bytes",
+            buf.len(),
+        );
+
+        Self(buf)
+    }
+
+    /// Provides a read-only reference to the byte buffer found
+    /// in this [ImageWriteData].
+    #[inline]
+    pub fn get(&self) -> &[u8] {
+        self.0
     }
 }

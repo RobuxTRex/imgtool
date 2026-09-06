@@ -32,6 +32,18 @@ impl<'a> Scanner<'a> {
         Some(res.try_into().expect("unreachable")) // unreachable panic
     }
 
+    /// Reads a singular byte from the buffer.
+    ///
+    /// An `Option<T>` is returned because there is no guarantee the buffer can supply `1`
+    /// byte.
+    ///
+    /// ## Panics
+    /// This function can panic when:
+    /// - The position of the [Scanner] in the buffer overflows the platform's unsigned integer limit.
+    pub fn read(&mut self) -> Option<u8> {
+        self.read_buffer::<1>().map(|b| b[0])
+    }
+
     /// Skips `N` bytes by adding `N` to the cursor.
     #[inline]
     pub fn skip<const N: usize>(&mut self) {
