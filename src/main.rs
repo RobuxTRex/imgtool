@@ -8,6 +8,7 @@ mod cfg;
 mod cli;
 mod default;
 mod image;
+mod scanner;
 mod setup;
 
 fn main() -> anyhow::Result<()> {
