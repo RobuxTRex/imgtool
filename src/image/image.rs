@@ -78,7 +78,7 @@ impl Image {
         // edge: vec doesn't allocate when size == 0, so sectors == 0 is safe
         let mut buf = Vec::with_capacity(
             size.try_into()
-                .expect("expected the total read side to fit into the platform integer limit"),
+                .expect("expected the total read size to fit into the platform integer limit"),
         );
         self.read_lba_into(lba, sectors, &mut buf)?;
         Ok(buf)

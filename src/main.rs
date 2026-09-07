@@ -8,6 +8,7 @@ mod cfg;
 mod cli;
 mod default;
 mod image;
+mod load;
 mod mbr;
 mod scanner;
 mod setup;

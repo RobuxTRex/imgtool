@@ -12,6 +12,13 @@ impl<'a> Scanner<'a> {
         Self { bytes, position: 0 }
     }
 
+    /// Constructs a new [Scanner] using a supplied byte buffer,
+    /// starting at a provided position **(zero-indexed)**.
+    #[inline]
+    pub fn new_with_pos(bytes: &'a [u8], position: usize) -> Scanner<'a> {
+        Self { bytes, position }
+    }
+
     /// Reads a constant number of bytes, `N`, from the buffer.
     ///
     /// An `Option<T>` is returned because there is no guarantee the buffer can supply `N`

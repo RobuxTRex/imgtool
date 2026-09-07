@@ -45,12 +45,36 @@ impl<'a> MbrSector<'a> {
         let cursor = 440 + ((i as u16) * 16);
 
         // read the partition, mapping it to None if it couldn't be read
-        MbrPartition::new(&buf, cursor)
+        MbrPartition::new(&buf, cursor as usize)
         /*
         .map(|p| Some(p))
         .unwrap_or_else(|| {
             println!("An error occurred whilst reading partition {i}: {e}");
             None
         })*/
+    }
+
+    /// Overwrites the first 512 bytes of the MBR sector with the provided
+    /// buffer.
+    ///
+    /// # Panics
+    /// This method panics when `i` is greater than 3.
+    pub fn write(&mut self, buf: &[u8]) -> io::Result<()> {
+        assert_eq!(
+            buf.len(),
+            512,
+            "expected the MBR write buffer to be exactly 512 bytes in length, got {}",
+            buf.len()
+        );
+
+        let sector_size = self.0.geometry.sector_size;
+
+        // write buf to 0..512, pad with 0s
+        let mut vec = vec![0u8; sector_size as usize];
+        vec[..buf.len()].copy_from_slice(buf);
+        let buf = vec.as_slice();
+
+        let write = ImageWriteData::new(sector_size, &buf);
+        self.0.write_lba(MBR_LBA, [write])
     }
 }

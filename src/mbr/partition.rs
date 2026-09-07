@@ -1,7 +1,7 @@
 use crate::scanner::Scanner;
 
 /// A partition entry in the MBR sector.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct MbrPartition {
     /// The LBA of the absolute first sector in the partition.
     pub lba: u32,
@@ -25,8 +25,8 @@ impl MbrPartition {
     ///
     /// Returns [None] if a read overruns the buffer or the partition is
     /// empty (kind `0x00`).
-    pub fn new(buf: &[u8], pos: u16) -> Option<MbrPartition> {
-        let mut scanner = Scanner::new(buf);
+    pub fn new(buf: &[u8], pos: usize) -> Option<MbrPartition> {
+        let mut scanner = Scanner::new_with_pos(buf, pos);
 
         let byte_0 = scanner.read()?;
         // read bit 7
