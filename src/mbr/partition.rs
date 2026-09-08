@@ -25,7 +25,8 @@ impl MbrPartition {
     ///
     /// Returns [None] if a read overruns the buffer or the partition is
     /// empty (kind `0x00`).
-    pub fn new(buf: &[u8], pos: usize) -> Option<MbrPartition> {
+    // src: https://en.wikipedia.org/wiki/Master_boot_record#PTE
+    pub fn load(buf: &[u8], pos: usize) -> Option<MbrPartition> {
         let mut scanner = Scanner::new_with_pos(buf, pos);
 
         let byte_0 = scanner.read()?;
@@ -62,5 +63,33 @@ impl MbrPartition {
             unit,
             kind,
         })
+    }
+
+    /// Writes a [MbrPartition] into a stack-allocated 16 byte
+    /// buffer.
+    // src: https://en.wikipedia.org/wiki/Master_boot_record#PTE
+    pub fn write_partition(&self) -> [u8; 16] {
+        // buffer to write partition data to
+        let mut buf = [0u8; 16];
+
+        // some fields that are annoying
+        let active = if self.active { 0u8 } else { 1u8 };
+
+        // supply data from fields to buf
+        buf[0] = (self.unit & (1 << 7) - 1) & (active << 7);
+        // skip: 1..4
+        buf[4] = self.kind;
+        // skip: 5..8
+        buf[8..12].copy_from_slice(&self.lba.to_le_bytes());
+        buf[12..16].copy_from_slice(&self.size.to_le_bytes());
+
+        buf
+    }
+
+    /// Writes a null [MbrPartition] into a stack-allocated 16
+    /// byte buffer.
+    #[inline]
+    pub const fn null() -> [u8; 16] {
+        [0u8; 16]
     }
 }

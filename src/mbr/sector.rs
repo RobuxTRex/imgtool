@@ -41,11 +41,11 @@ impl<'a> MbrSector<'a> {
 
         let buf = self.0.read_lba(MBR_LBA, 1).ok()?;
 
-        // the partition index is 440 + the partition offset (index * 16)
-        let cursor = 440 + ((i as u16) * 16);
+        // the partition index is 446 + the partition offset (index * 16)
+        let cursor = 446 + ((i as u16) * 16);
 
         // read the partition, mapping it to None if it couldn't be read
-        MbrPartition::new(&buf, cursor as usize)
+        MbrPartition::load(&buf, cursor as usize)
         /*
         .map(|p| Some(p))
         .unwrap_or_else(|| {

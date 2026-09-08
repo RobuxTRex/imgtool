@@ -7,9 +7,10 @@ use crate::{
     cfg::{Config, DiskKind, FirmwareKind},
     image::{Image, RW_CHUNK_SIZE},
     load::FileIterator,
+    mbr::write_protective,
 };
 
-pub(crate) fn execute(dir: PathBuf, cfg: PathBuf) -> anyhow::Result<()> {
+pub(crate) fn execute(_dir: PathBuf, cfg: PathBuf) -> anyhow::Result<()> {
     // verify the config file exists
     let exists = cfg.exists();
     // if it doesn't exist, bail
@@ -87,7 +88,31 @@ pub(crate) fn execute(dir: PathBuf, cfg: PathBuf) -> anyhow::Result<()> {
                     );
                 }
 
-                // and finally rewrite the partitions / protective MBR
+                // and finally...
+                if config.disk.kind == DiskKind::Mbr {
+                    // rewrite the partitions
+                    let mut i = 0;
+                    for partition in partitions.iter() {
+                        // empty partiton, continue
+                        if partition.is_none() {
+                            i += 1; // inc i
+                            continue;
+                        }
+                        let partition = partition.expect("unreachable"); // unreachable
+
+                        // parse partition and write result
+                        // TODO(sulphur): what the hell is the point of reading and writing back ??
+                        let bytes = partition.write_partition();
+                        let offset = 446 + (i * 16);
+                        buf[offset..offset + 16].copy_from_slice(&bytes);
+
+                        i += 1; // inc i
+                    }
+                } else {
+                    // GPT
+                    // write the protective MBR
+                    write_protective(&mut buf[0..512]);
+                }
 
                 // write the resulting sector to sector 0 (0..512 bytes)
                 mbr_sector.write(&buf[0..512])?;
@@ -100,6 +125,9 @@ pub(crate) fn execute(dir: PathBuf, cfg: PathBuf) -> anyhow::Result<()> {
             FirmwareKind::Uefi => {
                 // we don't really have to worry about overwriting stuff here; we always
                 // need to write the binary, and the protective MBR doesn't change.
+
+                // write the protective MBR
+                write_protective(&mut buf[0..512]);
             }
         }
     }
