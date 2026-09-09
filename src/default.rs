@@ -65,7 +65,7 @@ pub(crate) fn execute(_dir: PathBuf, cfg: PathBuf) -> anyhow::Result<()> {
                 }
 
                 // next we null the sector,
-                mbr_sector.null()?;
+                mbr_sector.write_null()?;
 
                 // then we write the stage 1 binary
                 let init_config = &config.init.expect("unreachable"); // always available on BIOS
@@ -115,7 +115,7 @@ pub(crate) fn execute(_dir: PathBuf, cfg: PathBuf) -> anyhow::Result<()> {
                 }
 
                 // write the resulting sector to sector 0 (0..512 bytes)
-                mbr_sector.write(&buf[0..512])?;
+                mbr_sector.write_mbr(&buf[0..512])?;
 
                 // debug: log result again
                 let mbr = image.read_lba(0, 1)?;
